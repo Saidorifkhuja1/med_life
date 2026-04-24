@@ -53,7 +53,6 @@ const toLocalized = (value: unknown, fallback: string): LocalizedText => {
       uz: toString(value.uz, fallback),
       ru: toString(value.ru, fallback),
       en: toString(value.en, fallback),
-      zh: toString(value.zh, fallback),
       tr: toString(value.tr, fallback),
     };
   }
@@ -63,7 +62,6 @@ const toLocalized = (value: unknown, fallback: string): LocalizedText => {
     uz: normalized,
     ru: normalized,
     en: normalized,
-    zh: normalized,
     tr: normalized,
   };
 };

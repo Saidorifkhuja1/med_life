@@ -7,17 +7,6 @@ import { useAppContext } from "@/context/app-context";
 import { getSingleParam, localizeText } from "@/lib/format";
 import { Medicine } from "@/types";
 
-const DEFAULT_CATEGORIES = [
-  "Pain Relief",
-  "Antibiotic",
-  "Vitamins",
-  "Allergy",
-  "Gastro",
-  "Cardio",
-  "Diabetes",
-  "Cold and Flu",
-];
-
 export default function OwnerMedicineDetailsPage() {
   const { id } = useParams<{ id: string | string[] }>();
   const { ownerPharmacy, getOwnerMedicineById, t } = useAppContext();
@@ -62,7 +51,7 @@ function OwnerMedicineEditForm({
   medicine: Medicine;
   medicineId: string;
 }) {
-  const { language, t, pharmaciesData, updateOwnerMedicine } = useAppContext();
+  const { language, t, pharmaciesData, medicinesData, updateOwnerMedicine } = useAppContext();
   const router = useRouter();
   const [pharmacyId, setPharmacyId] = useState(medicine.pharmacyId);
   const [name, setName] = useState(localizeText(medicine.name, language));
@@ -88,6 +77,12 @@ function OwnerMedicineEditForm({
         label: localizeText(pharmacy.name, language),
       })),
     [language, pharmaciesData],
+  );
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(new Set(medicinesData.map((item) => localizeText(item.category, language)).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b)),
+    [language, medicinesData],
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -186,7 +181,7 @@ function OwnerMedicineEditForm({
                 required
               />
               <datalist id="medicine-categories">
-                {DEFAULT_CATEGORIES.map((item) => (
+                {categoryOptions.map((item) => (
                   <option key={item} value={item} />
                 ))}
               </datalist>

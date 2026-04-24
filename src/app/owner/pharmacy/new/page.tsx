@@ -9,7 +9,7 @@ import { useAppContext } from "@/context/app-context";
 import { isValidCoordinates } from "@/lib/format";
 
 export default function OwnerCreatePharmacyPage() {
-  const { ownerPharmacy, createOwnerPharmacy, t } = useAppContext();
+  const { ownerPharmacy, createOwnerPharmacy, language, t } = useAppContext();
   const router = useRouter();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -183,6 +183,7 @@ export default function OwnerCreatePharmacyPage() {
           ) : null}
 
           <LocationPicker
+            language={language}
             lat={location.lat}
             lng={location.lng}
             onChange={setLocation}

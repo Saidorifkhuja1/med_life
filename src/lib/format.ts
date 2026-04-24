@@ -1,25 +1,46 @@
 import { Language, LocalizedText, Pharmacy, WorkingHours } from "@/types";
 
-const localeMap: Record<Language, string> = {
-  uz: "uz-UZ",
-  ru: "ru-RU",
-  en: "en-US",
-  zh: "zh-CN",
-  tr: "tr-TR",
+const decimalSeparatorMap: Record<Language, string> = {
+  uz: ".",
+  ru: ",",
+  en: ".",
+  tr: ",",
 };
 
-export const localizeText = (text: LocalizedText, language: Language) => text[language] ?? text.en;
+const groupSeparatorMap: Record<Language, string> = {
+  uz: " ",
+  ru: " ",
+  en: ",",
+  tr: ".",
+};
+
+const hasBrokenEncoding = (value: string) =>
+  /[ЂЃЄЅІЇЈЉЊЋЏђѓєѕіїјљњћџҐґ]/.test(value) || /Г[§ј±]|Еџ/.test(value);
+
+export const localizeText = (text: LocalizedText, language: Language) => {
+  const localized = text[language];
+  if (localized && !hasBrokenEncoding(localized)) {
+    return localized;
+  }
+
+  if (text.en && !hasBrokenEncoding(text.en)) {
+    return text.en;
+  }
+
+  return text.uz || text.ru || text.tr || text.en;
+};
 
 export const formatPrice = (price: number, language: Language) => {
-  const formatted = new Intl.NumberFormat(localeMap[language]).format(price);
+  const safePrice = Number.isFinite(price) ? Math.round(price) : 0;
+  const formatted = safePrice
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, groupSeparatorMap[language]);
   return `${formatted} so'm`;
 };
 
 export const formatRating = (rating: number, language: Language) => {
-  return new Intl.NumberFormat(localeMap[language], {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
-  }).format(rating);
+  const safeRating = Number.isFinite(rating) ? rating : 0;
+  return safeRating.toFixed(1).replace(".", decimalSeparatorMap[language]);
 };
 
 export const getSingleParam = (value: string | string[] | undefined) => {

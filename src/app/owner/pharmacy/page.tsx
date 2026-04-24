@@ -87,7 +87,7 @@ export default function OwnerPharmacyPage() {
               <div key={`${index}-${src.slice(0, 20)}`} className="owner-gallery-item">
                 <Image
                   src={src}
-                  alt={`owner-gallery-${index + 1}`}
+                  alt={`${localizeText(ownerPharmacy.name, language)} ${index + 1}`}
                   fill
                   className="card-image"
                   unoptimized={src.startsWith("data:")}
@@ -101,7 +101,7 @@ export default function OwnerPharmacyPage() {
           lat={ownerPharmacy.location.lat}
           lng={ownerPharmacy.location.lng}
           linkLabel={t.openMap}
-          title={`${localizeText(ownerPharmacy.name, language)} map`}
+          title={`${localizeText(ownerPharmacy.name, language)} - ${t.openMap}`}
         />
       </section>
     </div>

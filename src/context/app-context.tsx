@@ -7,7 +7,6 @@ import {
   useContext,
   useEffect,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { medicines as seedMedicines, pharmacies as seedPharmacies } from "@/lib/data";
 import { getDiscountPercent, normalizeRating } from "@/lib/format";
@@ -68,7 +67,6 @@ type MedicineInput = {
 };
 
 type AppContextValue = {
-  hydrated: boolean;
   theme: Theme;
   setTheme: Dispatch<SetStateAction<Theme>>;
   language: Language;
@@ -101,9 +99,6 @@ let themeCacheRaw: string | null | undefined;
 let themeCacheValue: Theme = DEFAULT_THEME;
 let languageCacheRaw: string | null | undefined;
 let languageCacheValue: Language = DEFAULT_LANGUAGE;
-let ownerCacheRaw: string | null | undefined;
-let ownerCacheValue = EMPTY_OWNER_STORAGE;
-let hasHydratedStore = false;
 
 const toLocalizedText = (value: string): LocalizedText => {
   const trimmed = value.trim();
@@ -111,23 +106,21 @@ const toLocalizedText = (value: string): LocalizedText => {
     uz: trimmed,
     ru: trimmed,
     en: trimmed,
-    zh: trimmed,
     tr: trimmed,
   };
 };
 
 const parseLanguage = (value: string | null): Language => {
-  if (value === "uz" || value === "ru" || value === "en" || value === "zh" || value === "tr") {
+  if (value === "uz" || value === "ru" || value === "en" || value === "tr") {
     return value;
   }
   return DEFAULT_LANGUAGE;
 };
 
-const getThemeSnapshot = (): Theme => {
-  if (typeof window === "undefined" || !hasHydratedStore) {
+const getStoredTheme = (): Theme => {
+  if (typeof window === "undefined") {
     return DEFAULT_THEME;
   }
-
   const raw = localStorage.getItem(THEME_KEY);
   if (raw === themeCacheRaw) {
     return themeCacheValue;
@@ -138,11 +131,10 @@ const getThemeSnapshot = (): Theme => {
   return themeCacheValue;
 };
 
-const getLanguageSnapshot = (): Language => {
-  if (typeof window === "undefined" || !hasHydratedStore) {
+const getStoredLanguage = (): Language => {
+  if (typeof window === "undefined") {
     return DEFAULT_LANGUAGE;
   }
-
   const raw = localStorage.getItem(LANGUAGE_KEY);
   if (raw === languageCacheRaw) {
     return languageCacheValue;
@@ -153,24 +145,16 @@ const getLanguageSnapshot = (): Language => {
   return languageCacheValue;
 };
 
-const getOwnerSnapshot = () => {
-  if (typeof window === "undefined" || !hasHydratedStore) {
+const getStoredOwnerSnapshot = () => {
+  if (typeof window === "undefined") {
     return EMPTY_OWNER_STORAGE;
   }
 
   const raw = localStorage.getItem(OWNER_STORAGE_KEY);
   const legacyPharmacyRaw = localStorage.getItem(LEGACY_OWNER_PHARMACY_KEY);
   const legacyMedicinesRaw = localStorage.getItem(LEGACY_OWNER_MEDICINES_KEY);
-  const combinedRaw = `${raw ?? ""}|${legacyPharmacyRaw ?? ""}|${legacyMedicinesRaw ?? ""}`;
-
-  if (combinedRaw === ownerCacheRaw) {
-    return ownerCacheValue;
-  }
-
-  ownerCacheRaw = combinedRaw;
   const parsed = parseJson<unknown>(raw);
-  ownerCacheValue = normalizeOwnerStorage(parsed, legacyPharmacyRaw, legacyMedicinesRaw);
-  return ownerCacheValue;
+  return normalizeOwnerStorage(parsed, legacyPharmacyRaw, legacyMedicinesRaw);
 };
 
 const persistOwnerStorage = (nextStorage: {
@@ -193,54 +177,12 @@ const persistOwnerStorage = (nextStorage: {
   window.dispatchEvent(new Event(OWNER_STORAGE_EVENT));
 };
 
-const subscribeToPreferences = (onStoreChange: () => void) => {
-  if (typeof window === "undefined") {
-    return () => undefined;
-  }
-
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(PREFERENCES_EVENT, onStoreChange);
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(PREFERENCES_EVENT, onStoreChange);
-  };
-};
-
-const subscribeToOwnerStorage = (onStoreChange: () => void) => {
-  if (typeof window === "undefined") {
-    return () => undefined;
-  }
-
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(OWNER_STORAGE_EVENT, onStoreChange);
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(OWNER_STORAGE_EVENT, onStoreChange);
-  };
-};
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pharmacyQuery, setPharmacyQuery] = useState("");
   const [medicineQuery, setMedicineQuery] = useState("");
-  const [hydrated, setHydrated] = useState(false);
-
-  const theme = useSyncExternalStore(
-    subscribeToPreferences,
-    getThemeSnapshot,
-    () => DEFAULT_THEME,
-  );
-  const language = useSyncExternalStore(
-    subscribeToPreferences,
-    getLanguageSnapshot,
-    () => DEFAULT_LANGUAGE,
-  );
-  const ownerStorage = useSyncExternalStore(
-    subscribeToOwnerStorage,
-    getOwnerSnapshot,
-    () => EMPTY_OWNER_STORAGE,
-  );
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
+  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
+  const [ownerStorage, setOwnerStorage] = useState(EMPTY_OWNER_STORAGE);
 
   const ownerPharmacy = ownerStorage.ownerPharmacy;
   const ownerMedicines = ownerStorage.ownerMedicines;
@@ -253,10 +195,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    hasHydratedStore = true;
-    setHydrated(true);
-    window.dispatchEvent(new Event(PREFERENCES_EVENT));
-    window.dispatchEvent(new Event(OWNER_STORAGE_EVENT));
+    const syncFromStorage = () => {
+      setThemeState(getStoredTheme());
+      setLanguageState(getStoredLanguage());
+      setOwnerStorage(getStoredOwnerSnapshot());
+    };
+
+    syncFromStorage();
+    window.addEventListener("storage", syncFromStorage);
+    window.addEventListener(PREFERENCES_EVENT, syncFromStorage);
+    window.addEventListener(OWNER_STORAGE_EVENT, syncFromStorage);
+
+    return () => {
+      window.removeEventListener("storage", syncFromStorage);
+      window.removeEventListener(PREFERENCES_EVENT, syncFromStorage);
+      window.removeEventListener(OWNER_STORAGE_EVENT, syncFromStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -281,9 +235,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const currentTheme = getThemeSnapshot();
+    const currentTheme = getStoredTheme();
     const nextTheme = typeof value === "function" ? value(currentTheme) : value;
     localStorage.setItem(THEME_KEY, nextTheme);
+    setThemeState(nextTheme);
     window.dispatchEvent(new Event(PREFERENCES_EVENT));
   };
 
@@ -292,9 +247,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const currentLanguage = getLanguageSnapshot();
+    const currentLanguage = getStoredLanguage();
     const nextLanguage = typeof value === "function" ? value(currentLanguage) : value;
     localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+    setLanguageState(nextLanguage);
     window.dispatchEvent(new Event(PREFERENCES_EVENT));
   };
 
@@ -446,7 +402,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
-    const snapshot = getOwnerSnapshot();
+    const snapshot = getStoredOwnerSnapshot();
     return JSON.stringify(snapshot, null, 2);
   };
 
@@ -471,7 +427,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getOwnerMedicineById = (id: string) => ownerMedicines.find((item) => item.id === id);
 
   const value: AppContextValue = {
-    hydrated,
     theme,
     setTheme,
     language,

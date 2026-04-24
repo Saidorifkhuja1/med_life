@@ -74,7 +74,7 @@ export function ImageUploader({
               <div className="uploaded-image-wrap">
                 <Image
                   src={src}
-                  alt={`uploaded-${index + 1}`}
+                  alt={`${label} ${index + 1}`}
                   fill
                   className="uploaded-image"
                   unoptimized={src.startsWith("data:")}

@@ -24,13 +24,12 @@ export function AppHeader() {
   const languageOptions = useMemo(
     () =>
       [
-        { value: "uz", label: "UZ", title: t.langUz },
-        { value: "ru", label: "RU", title: t.langRu },
-        { value: "en", label: "EN", title: t.langEn },
-        { value: "zh", label: "ZH", title: t.langZh },
-        { value: "tr", label: "TR", title: t.langTr },
+        { value: "uz", label: t.langUz },
+        { value: "ru", label: t.langRu },
+        { value: "en", label: t.langEn },
+        { value: "tr", label: t.langTr },
       ] as const,
-    [t.langEn, t.langRu, t.langTr, t.langUz, t.langZh],
+    [t.langEn, t.langRu, t.langTr, t.langUz],
   );
 
   const [showSearch, setShowSearch] = useState(false);
@@ -158,7 +157,7 @@ export function AppHeader() {
                     }}
                     role="menuitemradio"
                     aria-checked={language === option.value}
-                    title={option.title}
+                    title={option.label}
                   >
                     {option.label}
                   </button>

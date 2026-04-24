@@ -187,25 +187,41 @@ export default function HomePage() {
         </h2>
 
         <div className="filter-grid">
-          <label className="checkbox-field">
+          <label className="checkbox-field checkbox-card">
             <input type="checkbox" checked={openNowOnly} onChange={(event) => setOpenNowOnly(event.target.checked)} />
-            <span>{t.openNow}</span>
+            <span className="checkbox-mark" aria-hidden="true" />
+            <span className="checkbox-copy">
+              <strong>{t.openNow}</strong>
+              <small>{t.openPharmaciesNow}</small>
+            </span>
           </label>
-          <label className="checkbox-field">
+          <label className="checkbox-field checkbox-card">
             <input type="checkbox" checked={only24x7} onChange={(event) => setOnly24x7(event.target.checked)} />
-            <span>{t.only24x7}</span>
+            <span className="checkbox-mark" aria-hidden="true" />
+            <span className="checkbox-copy">
+              <strong>{t.only24x7}</strong>
+              <small>{t.workingHours}</small>
+            </span>
           </label>
-          <label className="checkbox-field">
+          <label className="checkbox-field checkbox-card">
             <input
               type="checkbox"
               checked={hasDeliveryOnly}
               onChange={(event) => setHasDeliveryOnly(event.target.checked)}
             />
-            <span>{t.hasDelivery}</span>
+            <span className="checkbox-mark" aria-hidden="true" />
+            <span className="checkbox-copy">
+              <strong>{t.hasDelivery}</strong>
+              <small>{t.delivery}</small>
+            </span>
           </label>
-          <label className="checkbox-field">
+          <label className="checkbox-field checkbox-card">
             <input type="checkbox" checked={availableOnly} onChange={(event) => setAvailableOnly(event.target.checked)} />
-            <span>{t.availabilityOnly}</span>
+            <span className="checkbox-mark" aria-hidden="true" />
+            <span className="checkbox-copy">
+              <strong>{t.availabilityOnly}</strong>
+              <small>{t.availableMedicines}</small>
+            </span>
           </label>
 
           <label className="form-field">

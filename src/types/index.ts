@@ -1,4 +1,4 @@
-export type Language = "uz" | "ru" | "en" | "zh" | "tr";
+export type Language = "uz" | "ru" | "en" | "tr";
 
 export type Theme = "light" | "dark";
 
@@ -6,7 +6,6 @@ export type LocalizedText = {
   uz: string;
   ru: string;
   en: string;
-  zh: string;
   tr: string;
 };
 

@@ -6,24 +6,18 @@ import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/app-context";
 import { localizeText } from "@/lib/format";
 
-const DEFAULT_CATEGORIES = [
-  "Pain Relief",
-  "Antibiotic",
-  "Vitamins",
-  "Allergy",
-  "Gastro",
-  "Cardio",
-  "Diabetes",
-  "Cold and Flu",
-];
-
 export default function OwnerCreateMedicinePage() {
-  const { ownerPharmacy, pharmaciesData, language, addOwnerMedicine, t } = useAppContext();
+  const { ownerPharmacy, pharmaciesData, medicinesData, language, addOwnerMedicine, t } = useAppContext();
   const router = useRouter();
+  const initialCategory =
+    medicinesData
+      .map((medicine) => localizeText(medicine.category, language))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))[0] ?? "";
   const [pharmacyId, setPharmacyId] = useState(ownerPharmacy?.id ?? "");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
+  const [category, setCategory] = useState(initialCategory);
   const [price, setPrice] = useState("0");
   const [oldPrice, setOldPrice] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
@@ -44,6 +38,12 @@ export default function OwnerCreateMedicinePage() {
         label: localizeText(pharmacy.name, language),
       })),
     [language, pharmaciesData],
+  );
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(new Set(medicinesData.map((medicine) => localizeText(medicine.category, language)).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b)),
+    [language, medicinesData],
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -159,7 +159,7 @@ export default function OwnerCreateMedicinePage() {
                 required
               />
               <datalist id="medicine-categories">
-                {DEFAULT_CATEGORIES.map((item) => (
+                {categoryOptions.map((item) => (
                   <option key={item} value={item} />
                 ))}
               </datalist>

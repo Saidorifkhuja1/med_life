@@ -189,6 +189,7 @@ function OwnerPharmacyEditForm({ pharmacy }: { pharmacy: Pharmacy }) {
           ) : null}
 
           <LocationPicker
+            language={language}
             lat={location.lat}
             lng={location.lng}
             onChange={setLocation}

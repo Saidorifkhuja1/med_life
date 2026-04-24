@@ -3,9 +3,11 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { isValidCoordinates } from "@/lib/format";
+import { Language } from "@/types";
 import { LocationTargetIcon } from "@/components/icons";
 
 type LocationPickerProps = {
+  language: Language;
   lat: number;
   lng: number;
   onChange: (next: { lat: number; lng: number }) => void;
@@ -34,6 +36,7 @@ const ClientMap = dynamic<ClientMapProps>(
 );
 
 export function LocationPicker({
+  language,
   lat,
   lng,
   onChange,
@@ -66,7 +69,7 @@ export function LocationPicker({
         {
           signal: controller.signal,
           headers: {
-            "Accept-Language": "en",
+            "Accept-Language": language,
           },
         },
       )
@@ -85,7 +88,7 @@ export function LocationPicker({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [hasValidCoords, lat, lng]);
+  }, [hasValidCoords, language, lat, lng]);
 
   const onUseCurrentLocation = () => {
     if (!navigator.geolocation) {

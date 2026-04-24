@@ -101,7 +101,7 @@ export default function MedicineDetailsPage() {
           lat={pharmacy.location.lat}
           lng={pharmacy.location.lng}
           linkLabel={t.openMap}
-          title={`${localizeText(pharmacy.name, language)} map`}
+          title={`${localizeText(pharmacy.name, language)} - ${t.openMap}`}
         />
       </section>
     </div>
