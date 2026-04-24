@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAppContext } from "@/context/app-context";
 import { Language } from "@/types";
+import { useState } from "react";
 
 const languageOptions = [
   { value: "uz", label: "UZ" },
@@ -23,6 +24,9 @@ export function AppHeader() {
     t,
   } = useAppContext();
 
+  const [showSearch, setShowSearch] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
+
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -31,40 +35,73 @@ export function AppHeader() {
           <span className="brand-name">{t.projectName}</span>
         </Link>
 
+        {showSearch && (
+          <div className="header-search">
+            <input
+              className="input search-input"
+              value={pharmacyQuery}
+              onChange={(event) => setPharmacyQuery(event.target.value)}
+              placeholder={t.searchPharmacy}
+              aria-label={t.searchPharmacy}
+              autoFocus
+            />
+            <input
+              className="input search-input"
+              value={medicineQuery}
+              onChange={(event) => setMedicineQuery(event.target.value)}
+              placeholder={t.searchMedicine}
+              aria-label={t.searchMedicine}
+            />
+          </div>
+        )}
+
         <div className="header-controls">
-          <input
-            className="input"
-            value={pharmacyQuery}
-            onChange={(event) => setPharmacyQuery(event.target.value)}
-            placeholder={t.searchPharmacy}
-            aria-label={t.searchPharmacy}
-          />
-          <input
-            className="input"
-            value={medicineQuery}
-            onChange={(event) => setMedicineQuery(event.target.value)}
-            placeholder={t.searchMedicine}
-            aria-label={t.searchMedicine}
-          />
           <button
             type="button"
-            className="theme-button"
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className="circular-button search-button"
+            onClick={() => setShowSearch(!showSearch)}
+            title="Search"
+            aria-label="Search"
           >
-            {theme === "light" ? t.themeDark : t.themeLight}
+            🔍
           </button>
-          <select
-            className="select"
-            value={language}
-            onChange={(event) => setLanguage(event.target.value as Language)}
+
+          <button
+            type="button"
+            className="circular-button theme-button"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            title={theme === "light" ? t.themeDark : t.themeLight}
+            aria-label={theme === "light" ? t.themeDark : t.themeLight}
+          >
+            {theme === "light" ? "🌙" : "☀️"}
+          </button>
+
+          <button
+            type="button"
+            className="circular-button language-button"
+            onClick={() => setShowLanguage(!showLanguage)}
+            title={t.language}
             aria-label={t.language}
           >
-            {languageOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            🌐
+          </button>
+
+          {showLanguage && (
+            <div className="language-dropdown">
+              {languageOptions.map((option) => (
+                <button
+                  key={option.value}
+                  className={`language-option ${language === option.value ? "active" : ""}`}
+                  onClick={() => {
+                    setLanguage(option.value as Language);
+                    setShowLanguage(false);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </header>
