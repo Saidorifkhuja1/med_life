@@ -138,7 +138,9 @@ export type Dictionary = {
   geolocationFailed: string;
   invalidCoordinates: string;
   pharmacyImages: string;
+  medicineImage: string;
   maxFiveImages: string;
+  singleImageUpload: string;
   remove: string;
   imageUrl: string;
   saveChanges: string;
@@ -302,7 +304,9 @@ const en: Dictionary = {
   geolocationFailed: "Could not get your location.",
   invalidCoordinates: "Please select a valid location on map.",
   pharmacyImages: "Pharmacy images",
+  medicineImage: "Medicine image",
   maxFiveImages: "Upload up to 5 images",
+  singleImageUpload: "Upload 1 image from your device",
   remove: "Remove",
   imageUrl: "Image URL (optional)",
   saveChanges: "Save changes",
@@ -463,7 +467,9 @@ const uz: Partial<Dictionary> = {
   geolocationFailed: "Joylashuvni olishda xatolik.",
   invalidCoordinates: "Xaritadan to'g'ri joy tanlang.",
   pharmacyImages: "Dorixona rasmlari",
+  medicineImage: "Dori rasmi",
   maxFiveImages: "Maksimal 5 ta rasm yuklang",
+  singleImageUpload: "Qurilmadan 1 ta rasm yuklang",
   remove: "O'chirish",
   imageUrl: "Rasm URL (ixtiyoriy)",
   saveChanges: "Saqlash",
@@ -625,7 +631,9 @@ const ru: Partial<Dictionary> = {
   geolocationFailed: "Не удалось определить местоположение.",
   invalidCoordinates: "Пожалуйста, выберите корректную точку на карте.",
   pharmacyImages: "Фотографии аптеки",
+  medicineImage: "Изображение лекарства",
   maxFiveImages: "Загрузите до 5 изображений",
+  singleImageUpload: "Загрузите 1 изображение с устройства",
   remove: "Удалить",
   imageUrl: "URL изображения (необязательно)",
   saveChanges: "Сохранить изменения",
@@ -788,7 +796,9 @@ const tr: Partial<Dictionary> = {
   geolocationFailed: "Konum alinamadi.",
   invalidCoordinates: "Lutfen haritada gecerli bir nokta secin.",
   pharmacyImages: "Eczane gorselleri",
+  medicineImage: "Ilac gorseli",
   maxFiveImages: "En fazla 5 gorsel yukleyin",
+  singleImageUpload: "Cihazinizdan 1 gorsel yukleyin",
   remove: "Kaldir",
   imageUrl: "Gorsel URL'si (istege bagli)",
   saveChanges: "Degisiklikleri kaydet",

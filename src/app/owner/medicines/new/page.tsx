@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImageUploader } from "@/components/image-uploader";
 import { useAppContext } from "@/context/app-context";
 import { localizeText } from "@/lib/format";
 
@@ -270,15 +271,15 @@ export default function OwnerCreateMedicinePage() {
             <input className="input" value={tags} onChange={(event) => setTags(event.target.value)} />
           </label>
 
-          <label className="form-field">
-            <span>{t.imageUrl}</span>
-            <input
-              className="input"
-              value={image}
-              onChange={(event) => setImage(event.target.value)}
-              placeholder="/images/medicine-placeholder.svg"
-            />
-          </label>
+          <ImageUploader
+            images={image ? [image] : []}
+            onChange={(nextImages) => setImage(nextImages[0] ?? "")}
+            label={t.medicineImage}
+            helpText={t.singleImageUpload}
+            removeText={t.remove}
+            selectedFileCountText={t.selectedFileCount}
+            maxFiles={1}
+          />
 
           {error ? <p className="field-error">{error}</p> : <p className="owner-list-text">{t.discountCalculated}</p>}
 
