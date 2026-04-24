@@ -68,6 +68,7 @@ type MedicineInput = {
 };
 
 type AppContextValue = {
+  hydrated: boolean;
   theme: Theme;
   setTheme: Dispatch<SetStateAction<Theme>>;
   language: Language;
@@ -102,6 +103,7 @@ let languageCacheRaw: string | null | undefined;
 let languageCacheValue: Language = DEFAULT_LANGUAGE;
 let ownerCacheRaw: string | null | undefined;
 let ownerCacheValue = EMPTY_OWNER_STORAGE;
+let hasHydratedStore = false;
 
 const toLocalizedText = (value: string): LocalizedText => {
   const trimmed = value.trim();
@@ -122,7 +124,7 @@ const parseLanguage = (value: string | null): Language => {
 };
 
 const getThemeSnapshot = (): Theme => {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !hasHydratedStore) {
     return DEFAULT_THEME;
   }
 
@@ -137,7 +139,7 @@ const getThemeSnapshot = (): Theme => {
 };
 
 const getLanguageSnapshot = (): Language => {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !hasHydratedStore) {
     return DEFAULT_LANGUAGE;
   }
 
@@ -152,7 +154,7 @@ const getLanguageSnapshot = (): Language => {
 };
 
 const getOwnerSnapshot = () => {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !hasHydratedStore) {
     return EMPTY_OWNER_STORAGE;
   }
 
@@ -222,6 +224,7 @@ const subscribeToOwnerStorage = (onStoreChange: () => void) => {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pharmacyQuery, setPharmacyQuery] = useState("");
   const [medicineQuery, setMedicineQuery] = useState("");
+  const [hydrated, setHydrated] = useState(false);
 
   const theme = useSyncExternalStore(
     subscribeToPreferences,
@@ -244,6 +247,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const pharmaciesData = ownerPharmacy ? [...seedPharmacies, ownerPharmacy] : seedPharmacies;
   const medicinesData = ownerMedicines.length > 0 ? [...seedMedicines, ...ownerMedicines] : seedMedicines;
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    hasHydratedStore = true;
+    setHydrated(true);
+    window.dispatchEvent(new Event(PREFERENCES_EVENT));
+    window.dispatchEvent(new Event(OWNER_STORAGE_EVENT));
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -457,6 +471,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getOwnerMedicineById = (id: string) => ownerMedicines.find((item) => item.id === id);
 
   const value: AppContextValue = {
+    hydrated,
     theme,
     setTheme,
     language,
