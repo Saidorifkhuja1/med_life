@@ -1,4 +1,4 @@
-export type Language = "uz" | "ru" | "en";
+export type Language = "uz" | "ru" | "en" | "zh" | "tr";
 
 export type Theme = "light" | "dark";
 
@@ -6,6 +6,8 @@ export type LocalizedText = {
   uz: string;
   ru: string;
   en: string;
+  zh: string;
+  tr: string;
 };
 
 export type Coordinates = {
@@ -13,13 +15,25 @@ export type Coordinates = {
   lng: number;
 };
 
+export type WorkingHours = {
+  is24x7: boolean;
+  open: string;
+  close: string;
+};
+
 export type Pharmacy = {
   id: string;
   name: LocalizedText;
   address: LocalizedText;
+  district: LocalizedText;
   description: LocalizedText;
   phone: string;
   image: string;
+  images: string[];
+  rating: number;
+  hasDelivery: boolean;
+  workingHours: WorkingHours;
+  createdAt: string;
   location: Coordinates;
 };
 
@@ -28,6 +42,17 @@ export type Medicine = {
   pharmacyId: string;
   name: LocalizedText;
   description: LocalizedText;
+  category: LocalizedText;
   price: number;
-  image: string;
+  oldPrice: number | null;
+  discountPercent: number;
+  isAvailable: boolean;
+  stockCount: number;
+  manufacturer: LocalizedText;
+  dosage: LocalizedText;
+  expiryDate: string;
+  prescriptionRequired: boolean;
+  tags: string[];
+  image?: string;
+  createdAt: string;
 };

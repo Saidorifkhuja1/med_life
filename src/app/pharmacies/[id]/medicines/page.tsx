@@ -5,12 +5,11 @@ import { useParams } from "next/navigation";
 import { MedicineCard } from "@/components/medicine-card";
 import { NotFoundView } from "@/components/not-found-view";
 import { useAppContext } from "@/context/app-context";
-import { getMedicinesByPharmacy, getPharmacyById } from "@/lib/data";
 import { getSingleParam, localizeText } from "@/lib/format";
 
 export default function PharmacyMedicinesPage() {
   const { id } = useParams<{ id: string | string[] }>();
-  const { language, t } = useAppContext();
+  const { language, t, getPharmacyById, getMedicinesByPharmacy } = useAppContext();
   const pharmacyId = getSingleParam(id);
   const pharmacy = getPharmacyById(pharmacyId);
 
@@ -26,7 +25,7 @@ export default function PharmacyMedicinesPage() {
         <p className="hero-caption">{t.allMedicines}</p>
         <h1>{localizeText(pharmacy.name, language)}</h1>
         <p>
-          {pharmacyMedicines.length} {t.medicinesCount} {t.medicinesOfPharmacy}
+          {pharmacyMedicines.length} {t.medicinesCount}
         </p>
         <div className="detail-actions">
           <Link href={`/pharmacies/${pharmacy.id}`} className="secondary-button">

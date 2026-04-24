@@ -26,8 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="uz" className={`${headingFont.variable} ${bodyFont.variable}`}>
-      <body>
+    <html
+      lang="uz"
+      data-theme="light"
+      data-scroll-behavior="smooth"
+      className={`${headingFont.variable} ${bodyFont.variable}`}
+    >
+      <body suppressHydrationWarning>
         <AppProvider>
           <div className="app-shell">
             <AppHeader />

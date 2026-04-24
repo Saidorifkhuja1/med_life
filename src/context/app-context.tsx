@@ -6,11 +6,66 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { medicines as seedMedicines, pharmacies as seedPharmacies } from "@/lib/data";
+import { getDiscountPercent, normalizeRating } from "@/lib/format";
 import { Dictionary, dictionary } from "@/lib/i18n";
-import { Language, Theme } from "@/types";
+import {
+  EMPTY_OWNER_STORAGE,
+  LANGUAGE_KEY,
+  LEGACY_OWNER_MEDICINES_KEY,
+  LEGACY_OWNER_PHARMACY_KEY,
+  OWNER_STORAGE_EVENT,
+  OWNER_STORAGE_KEY,
+  PREFERENCES_EVENT,
+  STORAGE_VERSION,
+  THEME_KEY,
+  normalizeOwnerStorage,
+  parseJson,
+  parseTheme,
+} from "@/lib/storage";
+import { Language, LocalizedText, Medicine, Pharmacy, Theme } from "@/types";
+
+const OWNER_PHARMACY_ID = "owner-pharmacy";
+const DEFAULT_THEME: Theme = "light";
+const DEFAULT_LANGUAGE: Language = "uz";
+const EMPTY_MEDICINES: Medicine[] = [];
+
+type PharmacyInput = {
+  name: string;
+  address: string;
+  district: string;
+  description: string;
+  phone: string;
+  rating: number;
+  hasDelivery: boolean;
+  is24x7: boolean;
+  openTime: string;
+  closeTime: string;
+  lat: number;
+  lng: number;
+  images: string[];
+};
+
+type MedicineInput = {
+  pharmacyId: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  oldPrice: number | null;
+  discountPercent: number;
+  isAvailable: boolean;
+  stockCount: number;
+  manufacturer: string;
+  dosage: string;
+  expiryDate: string;
+  prescriptionRequired: boolean;
+  tags: string[];
+  image?: string;
+};
 
 type AppContextValue = {
   theme: Theme;
@@ -21,61 +76,412 @@ type AppContextValue = {
   setPharmacyQuery: Dispatch<SetStateAction<string>>;
   medicineQuery: string;
   setMedicineQuery: Dispatch<SetStateAction<string>>;
+  pharmaciesData: Pharmacy[];
+  medicinesData: Medicine[];
+  ownerPharmacy: Pharmacy | null;
+  ownerMedicines: Medicine[];
+  getPharmacyById: (id: string) => Pharmacy | undefined;
+  getMedicineById: (id: string) => Medicine | undefined;
+  getMedicinesByPharmacy: (pharmacyId: string) => Medicine[];
+  getOwnerMedicineById: (id: string) => Medicine | undefined;
+  createOwnerPharmacy: (input: PharmacyInput) => Pharmacy;
+  updateOwnerPharmacy: (input: PharmacyInput) => Pharmacy | null;
+  addOwnerMedicine: (input: MedicineInput) => Medicine | null;
+  updateOwnerMedicine: (id: string, input: MedicineInput) => Medicine | null;
+  resetOwnerData: () => void;
+  exportOwnerData: () => string | null;
+  importOwnerData: (payload: string) => boolean;
   t: Dictionary;
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-const THEME_KEY = "dorichi-theme";
-const LANGUAGE_KEY = "dorichi-language";
+let themeCacheRaw: string | null | undefined;
+let themeCacheValue: Theme = DEFAULT_THEME;
+let languageCacheRaw: string | null | undefined;
+let languageCacheValue: Language = DEFAULT_LANGUAGE;
+let ownerCacheRaw: string | null | undefined;
+let ownerCacheValue = EMPTY_OWNER_STORAGE;
 
-const getStoredTheme = (): Theme => {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-  const value = localStorage.getItem(THEME_KEY);
-  return value === "dark" || value === "light" ? value : "light";
+const toLocalizedText = (value: string): LocalizedText => {
+  const trimmed = value.trim();
+  return {
+    uz: trimmed,
+    ru: trimmed,
+    en: trimmed,
+    zh: trimmed,
+    tr: trimmed,
+  };
 };
 
-const getStoredLanguage = (): Language => {
-  if (typeof window === "undefined") {
-    return "uz";
+const parseLanguage = (value: string | null): Language => {
+  if (value === "uz" || value === "ru" || value === "en" || value === "zh" || value === "tr") {
+    return value;
   }
-  const value = localStorage.getItem(LANGUAGE_KEY);
-  return value === "uz" || value === "ru" || value === "en" ? value : "uz";
+  return DEFAULT_LANGUAGE;
+};
+
+const getThemeSnapshot = (): Theme => {
+  if (typeof window === "undefined") {
+    return DEFAULT_THEME;
+  }
+
+  const raw = localStorage.getItem(THEME_KEY);
+  if (raw === themeCacheRaw) {
+    return themeCacheValue;
+  }
+
+  themeCacheRaw = raw;
+  themeCacheValue = parseTheme(raw);
+  return themeCacheValue;
+};
+
+const getLanguageSnapshot = (): Language => {
+  if (typeof window === "undefined") {
+    return DEFAULT_LANGUAGE;
+  }
+
+  const raw = localStorage.getItem(LANGUAGE_KEY);
+  if (raw === languageCacheRaw) {
+    return languageCacheValue;
+  }
+
+  languageCacheRaw = raw;
+  languageCacheValue = parseLanguage(raw);
+  return languageCacheValue;
+};
+
+const getOwnerSnapshot = () => {
+  if (typeof window === "undefined") {
+    return EMPTY_OWNER_STORAGE;
+  }
+
+  const raw = localStorage.getItem(OWNER_STORAGE_KEY);
+  const legacyPharmacyRaw = localStorage.getItem(LEGACY_OWNER_PHARMACY_KEY);
+  const legacyMedicinesRaw = localStorage.getItem(LEGACY_OWNER_MEDICINES_KEY);
+  const combinedRaw = `${raw ?? ""}|${legacyPharmacyRaw ?? ""}|${legacyMedicinesRaw ?? ""}`;
+
+  if (combinedRaw === ownerCacheRaw) {
+    return ownerCacheValue;
+  }
+
+  ownerCacheRaw = combinedRaw;
+  const parsed = parseJson<unknown>(raw);
+  ownerCacheValue = normalizeOwnerStorage(parsed, legacyPharmacyRaw, legacyMedicinesRaw);
+  return ownerCacheValue;
+};
+
+const persistOwnerStorage = (nextStorage: {
+  ownerPharmacy: Pharmacy | null;
+  ownerMedicines: Medicine[];
+}) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const next = {
+    version: STORAGE_VERSION,
+    ownerPharmacy: nextStorage.ownerPharmacy,
+    ownerMedicines: nextStorage.ownerMedicines,
+  };
+
+  localStorage.setItem(OWNER_STORAGE_KEY, JSON.stringify(next));
+  localStorage.removeItem(LEGACY_OWNER_PHARMACY_KEY);
+  localStorage.removeItem(LEGACY_OWNER_MEDICINES_KEY);
+  window.dispatchEvent(new Event(OWNER_STORAGE_EVENT));
+};
+
+const subscribeToPreferences = (onStoreChange: () => void) => {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(PREFERENCES_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(PREFERENCES_EVENT, onStoreChange);
+  };
+};
+
+const subscribeToOwnerStorage = (onStoreChange: () => void) => {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(OWNER_STORAGE_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(OWNER_STORAGE_EVENT, onStoreChange);
+  };
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(getStoredTheme);
-  const [language, setLanguage] = useState<Language>(getStoredLanguage);
   const [pharmacyQuery, setPharmacyQuery] = useState("");
   const [medicineQuery, setMedicineQuery] = useState("");
 
+  const theme = useSyncExternalStore(
+    subscribeToPreferences,
+    getThemeSnapshot,
+    () => DEFAULT_THEME,
+  );
+  const language = useSyncExternalStore(
+    subscribeToPreferences,
+    getLanguageSnapshot,
+    () => DEFAULT_LANGUAGE,
+  );
+  const ownerStorage = useSyncExternalStore(
+    subscribeToOwnerStorage,
+    getOwnerSnapshot,
+    () => EMPTY_OWNER_STORAGE,
+  );
+
+  const ownerPharmacy = ownerStorage.ownerPharmacy;
+  const ownerMedicines = ownerStorage.ownerMedicines;
+
+  const pharmaciesData = ownerPharmacy ? [...seedPharmacies, ownerPharmacy] : seedPharmacies;
+  const medicinesData = ownerMedicines.length > 0 ? [...seedMedicines, ...ownerMedicines] : seedMedicines;
+
   useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme);
+    if (typeof window === "undefined") {
+      return;
+    }
+
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem(LANGUAGE_KEY, language);
+    if (typeof window === "undefined") {
+      return;
+    }
+
     document.documentElement.lang = language;
   }, [language]);
 
-  const value = useMemo(
-    () => ({
-      theme,
-      setTheme,
-      language,
-      setLanguage,
-      pharmacyQuery,
-      setPharmacyQuery,
-      medicineQuery,
-      setMedicineQuery,
-      t: dictionary[language],
-    }),
-    [language, medicineQuery, pharmacyQuery, theme],
-  );
+  const setTheme: Dispatch<SetStateAction<Theme>> = (value) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const currentTheme = getThemeSnapshot();
+    const nextTheme = typeof value === "function" ? value(currentTheme) : value;
+    localStorage.setItem(THEME_KEY, nextTheme);
+    window.dispatchEvent(new Event(PREFERENCES_EVENT));
+  };
+
+  const setLanguage: Dispatch<SetStateAction<Language>> = (value) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const currentLanguage = getLanguageSnapshot();
+    const nextLanguage = typeof value === "function" ? value(currentLanguage) : value;
+    localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+    window.dispatchEvent(new Event(PREFERENCES_EVENT));
+  };
+
+  const createOwnerPharmacy = (input: PharmacyInput) => {
+    const normalizedImages =
+      input.images.length > 0
+        ? input.images.slice(0, 5)
+        : [ownerPharmacy?.image ?? "/images/pharmacy-placeholder.svg"];
+    const createdAt = ownerPharmacy?.createdAt ?? new Date().toISOString();
+    const is24x7 = input.is24x7;
+
+    const nextPharmacy: Pharmacy = {
+      id: OWNER_PHARMACY_ID,
+      name: toLocalizedText(input.name),
+      address: toLocalizedText(input.address),
+      district: toLocalizedText(input.district),
+      description: toLocalizedText(input.description),
+      phone: input.phone.trim(),
+      image: normalizedImages[0] ?? "/images/pharmacy-placeholder.svg",
+      images: normalizedImages,
+      rating: normalizeRating(input.rating),
+      hasDelivery: input.hasDelivery,
+      workingHours: {
+        is24x7,
+        open: is24x7 ? "00:00" : input.openTime,
+        close: is24x7 ? "23:59" : input.closeTime,
+      },
+      createdAt,
+      location: {
+        lat: input.lat,
+        lng: input.lng,
+      },
+    };
+
+    persistOwnerStorage({
+      ownerPharmacy: nextPharmacy,
+      ownerMedicines: ownerMedicines.map((item) => ({
+        ...item,
+        pharmacyId: OWNER_PHARMACY_ID,
+      })),
+    });
+
+    return nextPharmacy;
+  };
+
+  const updateOwnerPharmacy = (input: PharmacyInput) => {
+    if (!ownerPharmacy) {
+      return null;
+    }
+
+    return createOwnerPharmacy(input);
+  };
+
+  const addOwnerMedicine = (input: MedicineInput): Medicine | null => {
+    if (!ownerPharmacy) {
+      return null;
+    }
+
+    const oldPrice = input.oldPrice && input.oldPrice > input.price ? input.oldPrice : null;
+    const discountPercent =
+      input.discountPercent > 0
+        ? Math.round(input.discountPercent)
+        : getDiscountPercent(input.price, oldPrice);
+
+    const nextMedicine: Medicine = {
+      id: `owner-med-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`,
+      pharmacyId: input.pharmacyId || OWNER_PHARMACY_ID,
+      name: toLocalizedText(input.name),
+      description: toLocalizedText(input.description),
+      category: toLocalizedText(input.category),
+      price: Math.max(0, input.price),
+      oldPrice,
+      discountPercent: Math.min(95, Math.max(0, discountPercent)),
+      isAvailable: input.isAvailable && input.stockCount > 0,
+      stockCount: Math.max(0, Math.round(input.stockCount)),
+      manufacturer: toLocalizedText(input.manufacturer),
+      dosage: toLocalizedText(input.dosage),
+      expiryDate: input.expiryDate,
+      prescriptionRequired: input.prescriptionRequired,
+      tags: input.tags.map((item) => item.trim()).filter(Boolean),
+      image: input.image?.trim() || "/images/medicine-placeholder.svg",
+      createdAt: new Date().toISOString(),
+    };
+
+    persistOwnerStorage({
+      ownerPharmacy,
+      ownerMedicines: [...ownerMedicines, nextMedicine],
+    });
+
+    return nextMedicine;
+  };
+
+  const updateOwnerMedicine = (id: string, input: MedicineInput): Medicine | null => {
+    if (!ownerPharmacy) {
+      return null;
+    }
+
+    let updatedMedicine: Medicine | null = null;
+    const nextMedicines = ownerMedicines.map((item) => {
+      if (item.id !== id) {
+        return item;
+      }
+
+      const oldPrice = input.oldPrice && input.oldPrice > input.price ? input.oldPrice : null;
+      const discountPercent =
+        input.discountPercent > 0
+          ? Math.round(input.discountPercent)
+          : getDiscountPercent(input.price, oldPrice);
+
+      updatedMedicine = {
+        ...item,
+        pharmacyId: input.pharmacyId || item.pharmacyId,
+        name: toLocalizedText(input.name),
+        description: toLocalizedText(input.description),
+        category: toLocalizedText(input.category),
+        price: Math.max(0, input.price),
+        oldPrice,
+        discountPercent: Math.min(95, Math.max(0, discountPercent)),
+        isAvailable: input.isAvailable && input.stockCount > 0,
+        stockCount: Math.max(0, Math.round(input.stockCount)),
+        manufacturer: toLocalizedText(input.manufacturer),
+        dosage: toLocalizedText(input.dosage),
+        expiryDate: input.expiryDate,
+        prescriptionRequired: input.prescriptionRequired,
+        tags: input.tags.map((tag) => tag.trim()).filter(Boolean),
+        image: input.image?.trim() || item.image || "/images/medicine-placeholder.svg",
+      };
+
+      return updatedMedicine;
+    });
+
+    persistOwnerStorage({
+      ownerPharmacy,
+      ownerMedicines: nextMedicines,
+    });
+
+    return updatedMedicine;
+  };
+
+  const resetOwnerData = () => {
+    persistOwnerStorage({
+      ownerPharmacy: null,
+      ownerMedicines: EMPTY_MEDICINES,
+    });
+  };
+
+  const exportOwnerData = () => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const snapshot = getOwnerSnapshot();
+    return JSON.stringify(snapshot, null, 2);
+  };
+
+  const importOwnerData = (payload: string) => {
+    const parsed = parseJson<unknown>(payload);
+    if (!parsed) {
+      return false;
+    }
+
+    const normalized = normalizeOwnerStorage(parsed);
+    persistOwnerStorage({
+      ownerPharmacy: normalized.ownerPharmacy,
+      ownerMedicines: normalized.ownerMedicines,
+    });
+    return true;
+  };
+
+  const getPharmacyById = (id: string) => pharmaciesData.find((item) => item.id === id);
+  const getMedicineById = (id: string) => medicinesData.find((item) => item.id === id);
+  const getMedicinesByPharmacy = (pharmacyId: string) =>
+    medicinesData.filter((item) => item.pharmacyId === pharmacyId);
+  const getOwnerMedicineById = (id: string) => ownerMedicines.find((item) => item.id === id);
+
+  const value: AppContextValue = {
+    theme,
+    setTheme,
+    language,
+    setLanguage,
+    pharmacyQuery,
+    setPharmacyQuery,
+    medicineQuery,
+    setMedicineQuery,
+    pharmaciesData,
+    medicinesData,
+    ownerPharmacy,
+    ownerMedicines,
+    getPharmacyById,
+    getMedicineById,
+    getMedicinesByPharmacy,
+    getOwnerMedicineById,
+    createOwnerPharmacy,
+    updateOwnerPharmacy,
+    addOwnerMedicine,
+    updateOwnerMedicine,
+    resetOwnerData,
+    exportOwnerData,
+    importOwnerData,
+    t: dictionary[language],
+  };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
