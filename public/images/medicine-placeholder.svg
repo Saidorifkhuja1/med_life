@@ -1,0 +1,16 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d4e8d" />
+      <stop offset="100%" stop-color="#209f83" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg2)" />
+  <rect x="170" y="140" width="860" height="520" rx="26" fill="#ffffff" fill-opacity="0.14" />
+  <rect x="270" y="250" width="660" height="300" rx="20" fill="#ffffff" fill-opacity="0.22" />
+  <rect x="360" y="320" width="180" height="86" rx="43" fill="#ffffff" />
+  <rect x="450" y="320" width="180" height="86" rx="43" fill="#45b39a" />
+  <text x="660" y="377" fill="#ffffff" font-size="58" font-family="Segoe UI, Arial, sans-serif" font-weight="700">
+    DORI
+  </text>
+</svg>
